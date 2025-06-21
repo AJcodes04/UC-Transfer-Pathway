@@ -1,0 +1,41 @@
+version: "3.8"
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: uctp
+      POSTGRES_USER: uctp_user
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  django:
+    build: ./backend/django-api
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ./backend/django-api:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  go-fetcher:
+    build: ./backend/go-fetcher
+    command: go run main.go # will fetch & upsert data on start (we’ll add scheduling later)
+    volumes:
+      - ./backend/go-fetcher:/go/src/uctp-go
+    depends_on:
+      - db
+
+  frontend:
+    build: ./frontend
+    command: npm run dev
+    ports:
+      - "3000:5173"
+    depends_on:
+      - django
+
+volumes:
+  pgdata:
